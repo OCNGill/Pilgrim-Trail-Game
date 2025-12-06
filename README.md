@@ -1,6 +1,6 @@
 # Pilgrim Trail
 
-**Version:** 1.0.0  
+**Version:** 0.1.0 
 **Genre:** 8-bit Style Resource Management Survival Game  
 **Platform:** Web Browser (HTML5 Canvas)
 
