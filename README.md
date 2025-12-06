@@ -8,7 +8,7 @@
 
 ## Overview
 
-Pilgrim Trail is a retro-styled survival game where you guide a party of pilgrims across 79 miles of treacherous wilderness on their journey to Plymouth. Manage your resources carefully, hunt for food, and decide when to travel or rest to ensure your party survives the journey.
+Pilgrim Trail is a retro-styled survival game in the spirit of Oregon Trail, where you guide a party of pilgrims across 79 miles of treacherous wilderness on their journey to Plymouth. Manage your resources carefully, hunt for food, and decide when to travel or rest to ensure your party survives the journey.
 
 ## Quick Start
 
