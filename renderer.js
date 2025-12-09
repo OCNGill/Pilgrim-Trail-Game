@@ -1,21 +1,17 @@
 /**
  * Pilgrim Trail - Renderer
  * 8-bit style canvas rendering system
- * Completely separated from game logic
+ * Updated for Turn-Based Phase System
  */
 
 const Renderer = {
     canvas: null,
     ctx: null,
 
-    // Logical resolution (8-bit era style)
     WIDTH: 640,
     HEIGHT: 480,
-
-    // Current scale factor
     scale: 1,
 
-    // 8-bit color palette (16 colors - similar to CGA/EGA era)
     PALETTE: {
         BLACK: '#000000',
         DARK_BLUE: '#1D2B53',
@@ -35,81 +31,48 @@ const Renderer = {
         PEACH: '#FFCCAA'
     },
 
-    // Font settings
     FONT_SIZE: 16,
     FONT_FAMILY: 'monospace',
 
-    /**
-     * Initialize the renderer
-     */
     init() {
         this.canvas = document.getElementById('gameCanvas');
-        if (!this.canvas) {
-            console.error('Canvas element not found!');
-            return;
-        }
-
+        if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
-
-        // Set logical resolution
         this.canvas.width = this.WIDTH;
         this.canvas.height = this.HEIGHT;
-
-        // Disable image smoothing for crisp pixels
         this.ctx.imageSmoothingEnabled = false;
 
-        // Setup resize handler
         this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
     },
 
-    /**
-     * Handle window resize - scale canvas while maintaining aspect ratio
-     */
     handleResize() {
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
-
         const scaleX = windowWidth / this.WIDTH;
         const scaleY = windowHeight / this.HEIGHT;
-
-        // Use the smaller scale to fit within window
         this.scale = Math.floor(Math.min(scaleX, scaleY));
-        this.scale = Math.max(1, this.scale); // Minimum scale of 1
-
-        // Apply CSS scaling
+        this.scale = Math.max(1, this.scale);
         this.canvas.style.width = (this.WIDTH * this.scale) + 'px';
         this.canvas.style.height = (this.HEIGHT * this.scale) + 'px';
     },
 
-    /**
-     * Clear the screen with a color
-     */
     clear(color = this.PALETTE.BLACK) {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(0, 0, this.WIDTH, this.HEIGHT);
     },
 
-    /**
-     * Draw a filled rectangle
-     */
     drawRect(x, y, width, height, color) {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(width), Math.floor(height));
     },
 
-    /**
-     * Draw a rectangle outline
-     */
     drawRectOutline(x, y, width, height, color, lineWidth = 2) {
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = lineWidth;
         this.ctx.strokeRect(Math.floor(x), Math.floor(y), Math.floor(width), Math.floor(height));
     },
 
-    /**
-     * Draw text with 8-bit style
-     */
     drawText(text, x, y, color = this.PALETTE.WHITE, size = this.FONT_SIZE, align = 'left') {
         this.ctx.fillStyle = color;
         this.ctx.font = `${size}px ${this.FONT_FAMILY}`;
@@ -118,457 +81,150 @@ const Renderer = {
         this.ctx.fillText(text, Math.floor(x), Math.floor(y));
     },
 
-    /**
-     * Draw text with shadow for better readability
-     */
     drawTextShadow(text, x, y, color = this.PALETTE.WHITE, shadowColor = this.PALETTE.BLACK, size = this.FONT_SIZE, align = 'left') {
-        // Draw shadow
         this.drawText(text, x + 2, y + 2, shadowColor, size, align);
-        // Draw main text
         this.drawText(text, x, y, color, size, align);
     },
 
-    /**
-     * Main render function - called by game loop
-     */
-    render(state, notification) {
-        // Clear screen
-        this.clear(this.PALETTE.DARK_BLUE);
+    getSkyColor(phase) {
+        switch (phase) {
+            case 0: return this.PALETTE.BLUE; // Morning
+            case 1: return '#4D8AB5'; // Afternoon
+            case 2: return '#3E2F5B'; // Evening
+            default: return this.PALETTE.DARK_BLUE;
+        }
+    },
 
-        // Draw header bar
-        this.drawRect(0, 0, this.WIDTH, 40, this.PALETTE.DARK_PURPLE);
-        this.drawTextShadow('PILGRIM TRAIL', 20, 10, this.PALETTE.YELLOW, this.PALETTE.BLACK, 20);
+    render(state) {
+        const skyColor = this.getSkyColor(state.phase);
+        this.clear(skyColor);
 
-        // Draw main status display
+        // Header
+        this.drawRect(0, 0, this.WIDTH, 50, this.PALETTE.DARK_PURPLE);
+
+        // Date Display
+        const dateStr = `${MONTHS[state.date.month]} ${state.date.day}, ${state.date.year}`;
+        this.drawTextShadow(dateStr, 20, 15, this.PALETTE.YELLOW, this.PALETTE.BLACK, 20);
+
+        // Phase Display
+        const phaseName = PHASE_NAMES[state.phase];
+        this.drawTextShadow(phaseName, this.WIDTH - 20, 15, this.PALETTE.PEACH, this.PALETTE.BLACK, 20, 'right');
+
         this.renderStatus(state);
+        this.renderParty(state);
+        this.renderActionMenu(state);
 
-        // Draw party roster (replaces event log)
-        this.renderPartyRoster(state);
-
-        // Draw journey stats
-        this.renderJourneyStats(state);
-
-        // Draw day progress bar
-        this.renderDayProgress(state);
-
-        // Draw current event prominently (center of screen)
+        // Event Overlay
         if (state.currentEvent) {
-            this.renderCurrentEvent(state.currentEvent);
+            this.renderEvent(state.currentEvent);
         }
 
-        // Draw exited screen if applicable
-        if (state.exited) {
-            this.renderExited();
-        }
-        // Draw game over screen if applicable
-        else if (state.gameOver) {
+        // Game Over
+        if (state.gameOver) {
             this.renderGameOver(state);
         }
-
-        // Draw notification if present
-        if (notification) {
-            this.renderNotification(notification);
-        }
-
-        // Draw controls help
-        this.renderControls(state);
     },
 
-    /**
-     * Render the main status display
-     */
     renderStatus(state) {
-        const boxX = 40;
-        const boxY = 60;
-        const boxWidth = 350;
-        const boxHeight = 130;
+        const boxX = 20;
+        const boxY = 70;
+        const width = 300;
+        const height = 150;
 
-        // Status box background
-        this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_GRAY);
-        this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.LIGHT_GRAY, 3);
+        this.drawRect(boxX, boxY, width, height, this.PALETTE.DARK_GRAY);
+        this.drawRectOutline(boxX, boxY, width, height, this.PALETTE.LIGHT_GRAY, 2);
 
-        // Status title
-        this.drawTextShadow('=== TRAIL STATUS ===', boxX + boxWidth / 2, boxY + 10, this.PALETTE.WHITE, this.PALETTE.BLACK, 14, 'center');
+        let y = boxY + 15;
+        this.drawTextShadow(`Location: Mile ${state.miles} / ${state.destinationMiles}`, boxX + 15, y, this.PALETTE.WHITE);
+        y += 25;
+        this.drawTextShadow(`Food: ${state.resources.food}`, boxX + 15, y, state.resources.food < 50 ? this.PALETTE.RED : this.PALETTE.GREEN);
+        y += 25;
 
-        // Day counter
-        this.drawTextShadow(`Day: ${state.day}`, boxX + 15, boxY + 35, this.PALETTE.YELLOW, this.PALETTE.BLACK, 16);
+        // Morale Bar
+        this.drawTextShadow(`Morale: ${state.party.morale}`, boxX + 15, y, this.PALETTE.YELLOW);
+        this.drawRect(boxX + 100, y + 4, 150, 10, this.PALETTE.BLACK); // Bar bg
+        const moralePct = (state.party.morale + 10) / 20; // Normalize -10..10 to 0..1
+        this.drawRect(boxX + 100, y + 4, 150 * moralePct, 10, this.PALETTE.ORANGE);
+        y += 25;
 
-        // Distance display with travel status
-        let travelStatus = state.traveling ? 'Traveling' : 'Stopped';
-        let travelColor = state.traveling ? this.PALETTE.GREEN : this.PALETTE.ORANGE;
-
-        // Show forced stop status
-        if (state.modifiers.forcedStop) {
-            travelStatus = 'Halted!';
-            travelColor = this.PALETTE.RED;
-        }
-
-        const milesText = `Mile ${state.miles} / ${state.settings.destinationMiles}`;
-        this.drawTextShadow(milesText, boxX + 130, boxY + 35, this.PALETTE.BLUE, this.PALETTE.BLACK, 16);
-        this.drawTextShadow(`[${travelStatus}]`, boxX + 275, boxY + 35, travelColor, this.PALETTE.BLACK, 14);
-
-        // Show speed modifier if active
-        if (state.modifiers.speedPenalty > 0) {
-            const penaltyText = `Speed -${state.modifiers.speedPenalty} (${state.modifiers.speedPenaltyDays}d)`;
-            this.drawTextShadow(penaltyText, boxX + 15, boxY + 55, this.PALETTE.RED, this.PALETTE.BLACK, 12);
-        }
-
-        // Party info
-        this.drawTextShadow(`Survivors: ${state.party.survivors}`, boxX + 15, boxY + 75, this.PALETTE.GREEN, this.PALETTE.BLACK, 16);
-
-        // Resources with warning
-        const foodColor = state.resources.food < 20 ? this.PALETTE.RED : this.PALETTE.PEACH;
-        this.drawTextShadow(`Food: ${state.resources.food}`, boxX + 150, boxY + 75, foodColor, this.PALETTE.BLACK, 16);
-
-        // Flashing food warnings
-        const showWarning = state.warningFlashTimer < 1000; // Flash every second
-        if (state.resources.food < 10 && showWarning) {
-            this.drawTextShadow('⚠ STARVING', boxX + 250, boxY + 75, this.PALETTE.RED, this.PALETTE.BLACK, 14);
-        } else if (state.resources.food < 20 && state.resources.food >= 10 && showWarning) {
-            this.drawTextShadow('⚠ LOW FOOD', boxX + 250, boxY + 75, this.PALETTE.ORANGE, this.PALETTE.BLACK, 14);
-        }
-
-        // Hunt result display (below status box) with animations
-        if (state.huntResult) {
-            const huntY = boxY + boxHeight + 5;
-            const huntBoxWidth = 340;
-            const huntBoxHeight = 60;
-            const huntBoxX = boxX + (boxWidth - huntBoxWidth) / 2;
-
-            // Calculate animation progress (0 to 1, where 0 = start, 1 = end)
-            const animProgress = state.huntAnimTimer > 0 ? 1 - (state.huntAnimTimer / 500) : 1;
-
-            if (state.huntResult.success) {
-                this.drawRect(huntBoxX, huntY, huntBoxWidth, huntBoxHeight, this.PALETTE.DARK_GREEN);
-                this.drawRectOutline(huntBoxX, huntY, huntBoxWidth, huntBoxHeight, this.PALETTE.GREEN, 2);
-
-                // Grow animation for "FEAST!" text
-                const baseSize = 12;
-                const maxSize = 24;
-                const growSize = baseSize + (maxSize - baseSize) * animProgress;
-
-                this.drawTextShadow('FEAST!', huntBoxX + huntBoxWidth / 2, huntY + 12, this.PALETTE.YELLOW, this.PALETTE.BLACK, Math.round(growSize), 'center');
-                this.drawTextShadow(`+${state.huntResult.amount} food - Praise the Lord!`, huntBoxX + huntBoxWidth / 2, huntY + 38, this.PALETTE.WHITE, this.PALETTE.BLACK, 11, 'center');
-            } else {
-                // Shake animation for failure
-                const shakeIntensity = state.huntResult.shakeIntensity || 1;
-                const shakeOffset = state.huntAnimTimer > 0 ?
-                    Math.sin(animProgress * Math.PI * 6) * shakeIntensity * 3 : 0;
-
-                this.drawRect(huntBoxX + shakeOffset, huntY, huntBoxWidth, huntBoxHeight, this.PALETTE.DARK_GRAY);
-                this.drawRectOutline(huntBoxX + shakeOffset, huntY, huntBoxWidth, huntBoxHeight, this.PALETTE.RED, 2);
-
-                // Word wrap long messages
-                const message = state.huntResult.message || 'Hunt failed.';
-                if (message.length > 45) {
-                    // Split into two lines
-                    const midPoint = message.lastIndexOf(' ', 45);
-                    const line1 = message.substring(0, midPoint);
-                    const line2 = message.substring(midPoint + 1);
-                    this.drawTextShadow(line1, huntBoxX + huntBoxWidth / 2 + shakeOffset, huntY + 14, this.PALETTE.YELLOW, this.PALETTE.BLACK, 11, 'center');
-                    this.drawTextShadow(line2, huntBoxX + huntBoxWidth / 2 + shakeOffset, huntY + 32, this.PALETTE.YELLOW, this.PALETTE.BLACK, 11, 'center');
-                } else {
-                    this.drawTextShadow(message, huntBoxX + huntBoxWidth / 2 + shakeOffset, huntY + 22, this.PALETTE.YELLOW, this.PALETTE.BLACK, 12, 'center');
-                }
-            }
-        }
+        // Trust Bar
+        this.drawTextShadow(`Trust: ${state.party.trust}`, boxX + 15, y, this.PALETTE.PINK);
+        this.drawRect(boxX + 100, y + 4, 150, 10, this.PALETTE.BLACK);
+        const trustPct = (state.party.trust + 5) / 10; // Normalize -5..5 to 0..1
+        this.drawRect(boxX + 100, y + 4, 150 * trustPct, 10, this.PALETTE.INDIGO);
     },
 
-    /**
-     * Render the party roster (Mayflower passengers)
-     */
-    renderPartyRoster(state) {
-        const boxX = 405;
-        const boxY = 60;
-        const boxWidth = 220;
-        const boxHeight = 200;
+    renderParty(state) {
+        const boxX = 340;
+        const boxY = 70;
+        const width = 280;
+        const height = 300;
 
-        // Roster box background
-        this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_GRAY);
-        this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.PEACH, 2);
+        this.drawRect(boxX, boxY, width, height, this.PALETTE.DARK_GRAY);
+        this.drawRectOutline(boxX, boxY, width, height, this.PALETTE.BROWN, 2);
 
-        // Title
-        this.drawTextShadow('MAYFLOWER PASSENGERS', boxX + boxWidth / 2, boxY + 8, this.PALETTE.YELLOW, this.PALETTE.BLACK, 11, 'center');
+        this.drawTextShadow("Mayflower Party", boxX + width / 2, boxY + 10, this.PALETTE.ORANGE, this.PALETTE.BLACK, 16, 'center');
 
-        // Passenger list
-        let entryY = boxY + 26;
-        const lineHeight = 14;
-
-        for (let i = 0; i < state.roster.length; i++) {
-            const passenger = state.roster[i];
-
-            // Determine display name and color
-            let displayName = passenger.name;
-            let nameColor = this.PALETTE.WHITE;
-            let suffix = '';
-            let isStrikethrough = false;
-
-            // Check if dead
-            if (!passenger.alive) {
-                nameColor = this.PALETTE.DARK_GRAY;
-                isStrikethrough = true;
-                suffix = ` [${passenger.causeOfDeath || 'DEAD'}]`;
-            }
-            // Check for illness
-            else if (passenger.ill) {
-                nameColor = this.PALETTE.RED;
-                suffix = ' [ILL]';
-            }
-            // Check for special tags (like +Oceanus)
-            else if (passenger.tag) {
-                suffix = ` [${passenger.tag}]`;
-                if (passenger.tag === '+Oceanus') {
-                    nameColor = this.PALETTE.PINK;
-                }
-            }
-
-            // Truncate long names
-            if (displayName.length > 18) {
-                displayName = displayName.substring(0, 15) + '...';
-            }
-
-            // Draw passenger name
-            this.drawTextShadow(displayName, boxX + 10, entryY, nameColor, this.PALETTE.BLACK, 10);
-
-            // Draw strikethrough line for dead passengers
-            if (isStrikethrough) {
-                const textWidth = this.ctx.measureText(displayName).width;
-                this.ctx.strokeStyle = this.PALETTE.RED;
-                this.ctx.lineWidth = 1;
-                this.ctx.beginPath();
-                this.ctx.moveTo(boxX + 10, entryY + 6);
-                this.ctx.lineTo(boxX + 10 + textWidth, entryY + 6);
-                this.ctx.stroke();
-            }
-
-            // Draw suffix if any
-            if (suffix) {
-                const suffixColor = !passenger.alive ? this.PALETTE.RED :
-                    passenger.ill ? this.PALETTE.RED : this.PALETTE.PINK;
-                this.drawTextShadow(suffix, boxX + 115, entryY, suffixColor, this.PALETTE.BLACK, 8);
-            }
-
-            entryY += lineHeight;
-        }
+        let y = boxY + 40;
+        state.roster.forEach(p => {
+            const color = p.alive ? (p.ill ? this.PALETTE.RED : this.PALETTE.WHITE) : this.PALETTE.DARK_GRAY;
+            const text = p.alive ? p.name : `${p.name} (RIP)`;
+            this.drawTextShadow(text, boxX + 20, y, color, this.PALETTE.BLACK, 12);
+            y += 18;
+        });
     },
 
-    /**
-     * Render journey statistics
-     */
-    renderJourneyStats(state) {
-        const boxX = 405;
-        const boxY = 270;
-        const boxWidth = 220;
-        const boxHeight = 85;
-
-        // Stats box background
-        this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_PURPLE);
-        this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.INDIGO, 2);
-
-        // Title
-        this.drawTextShadow('JOURNEY STATS', boxX + boxWidth / 2, boxY + 8, this.PALETTE.YELLOW, this.PALETTE.BLACK, 11, 'center');
-
-        // Hunt stats
-        const huntText = `Hunt Attempts: ${state.stats.huntAttempts} (${state.stats.huntSuccesses} successful)`;
-        this.drawTextShadow(huntText, boxX + 10, boxY + 28, this.PALETTE.PEACH, this.PALETTE.BLACK, 10);
-
-        // Days traveled
-        const daysText = `Days Traveled: ${state.stats.daysTraveled}`;
-        this.drawTextShadow(daysText, boxX + 10, boxY + 45, this.PALETTE.LIGHT_GRAY, this.PALETTE.BLACK, 10);
-
-        // Average miles per day
-        let avgMiles = 0;
-        if (state.stats.daysTraveled > 0) {
-            avgMiles = (state.miles / state.stats.daysTraveled).toFixed(1);
-        }
-        const avgText = `Miles per Day: ${avgMiles} avg`;
-        this.drawTextShadow(avgText, boxX + 10, boxY + 62, this.PALETTE.BLUE, this.PALETTE.BLACK, 10);
-    },
-
-    /**
-     * Render current event prominently in center
-     */
-    renderCurrentEvent(event) {
-        const boxWidth = 450;
-        const boxHeight = 80;
-        const boxX = (this.WIDTH - boxWidth) / 2;
+    renderActionMenu(state) {
+        const boxX = 20;
         const boxY = 240;
+        const width = 300;
+        const height = 220;
 
-        // Semi-transparent overlay behind
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.fillRect(boxX - 20, boxY - 10, boxWidth + 40, boxHeight + 20);
+        this.drawRect(boxX, boxY, width, height, this.PALETTE.DARK_BLUE);
+        this.drawRectOutline(boxX, boxY, width, height, this.PALETTE.BLUE, 2);
 
-        // Event box
-        this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_PURPLE);
-        this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.YELLOW, 3);
-
-        // Event icon/marker
-        this.drawTextShadow('⚓ EVENT ⚓', this.WIDTH / 2, boxY + 12, this.PALETTE.YELLOW, this.PALETTE.BLACK, 14, 'center');
-
-        // Event text
-        this.drawTextShadow(event.text, this.WIDTH / 2, boxY + 38, this.PALETTE.WHITE, this.PALETTE.BLACK, 18, 'center');
-
-        // Effect description
-        let effectText = this.getEffectDescription(event);
-        const effectColor = this.getEffectColor(event);
-        this.drawTextShadow(effectText, this.WIDTH / 2, boxY + 60, effectColor, this.PALETTE.BLACK, 14, 'center');
-    },
-
-    /**
-     * Get human-readable effect description
-     */
-    getEffectDescription(event) {
-        switch (event.effect) {
-            case 'food':
-                return event.value > 0 ? `+${event.value} Food` : `${event.value} Food`;
-            case 'bonusMiles':
-                return `+${event.value} Miles`;
-            case 'speedPenalty':
-                return `Speed reduced for ${event.duration || 3} days`;
-            case 'forcedStop':
-                return 'Must stop and assess';
-            case 'birth':
-                return '+1 Survivor (2 days passed)';
-            case 'disease':
-                return '-1 Survivor';
-            case 'death':
-                return '-1 Survivor';
-            case 'morale':
-                return 'Morale boosted!';
-            case 'none':
-                return 'A harrowing moment...';
-            default:
-                return '';
+        // Feedback Message
+        if (state.lastActionMessage) {
+            this.drawTextShadow(state.lastActionMessage, boxX + 10, boxY + 10, this.PALETTE.YELLOW, this.PALETTE.BLACK, 12);
         }
+
+        const actionsY = boxY + 50;
+        this.drawTextShadow("ACTIONS (Press Number):", boxX + 10, actionsY, this.PALETTE.PEACH);
+
+        state.availableActions.forEach(action => {
+            if (action.id === 6 && state.date.dayOfWeek !== 0) return; // Hide Sermon if not Sunday
+
+            const y = actionsY + 25 + (action.id * 20);
+            this.drawTextShadow(`[${action.id}] ${action.name}`, boxX + 20, y, this.PALETTE.WHITE);
+        });
+
+        this.drawTextShadow("[SPACE] Rest/Pass", boxX + 20, height + boxY - 30, this.PALETTE.DARK_GRAY, this.PALETTE.BLACK, 12);
     },
 
-    /**
-     * Get effect color based on type
-     */
-    getEffectColor(event) {
-        switch (event.effect) {
-            case 'food':
-                return event.value > 0 ? this.PALETTE.GREEN : this.PALETTE.RED;
-            case 'bonusMiles':
-                return this.PALETTE.GREEN;
-            case 'speedPenalty':
-                return this.PALETTE.RED;
-            case 'forcedStop':
-                return this.PALETTE.ORANGE;
-            case 'birth':
-                return this.PALETTE.PINK;
-            case 'disease':
-                return this.PALETTE.RED;
-            case 'death':
-                return this.PALETTE.RED;
-            case 'morale':
-                return this.PALETTE.YELLOW;
-            case 'none':
-                return this.PALETTE.INDIGO;
-            default:
-                return this.PALETTE.WHITE;
-        }
+    renderEvent(event) {
+        const boxWidth = 400;
+        const boxHeight = 100;
+        const x = (this.WIDTH - boxWidth) / 2;
+        const y = (this.HEIGHT - boxHeight) / 2;
+
+        this.drawRect(x, y, boxWidth, boxHeight, this.PALETTE.DARK_PURPLE);
+        this.drawRectOutline(x, y, boxWidth, boxHeight, this.PALETTE.YELLOW, 3);
+
+        this.drawTextShadow("EVENT!", this.WIDTH / 2, y + 10, this.PALETTE.YELLOW, this.PALETTE.BLACK, 20, 'center');
+        this.drawTextShadow(event.text, this.WIDTH / 2, y + 40, this.PALETTE.WHITE, this.PALETTE.BLACK, 14, 'center');
     },
 
-    /**
-     * Render day progress bar
-     */
-    renderDayProgress(state) {
-        const barX = 40;
-        const barY = 365;
-        const barWidth = 350;
-        const barHeight = 20;
-
-        // Background
-        this.drawRect(barX, barY, barWidth, barHeight, this.PALETTE.DARK_GRAY);
-        this.drawRectOutline(barX, barY, barWidth, barHeight, this.PALETTE.LIGHT_GRAY, 2);
-
-        // Progress fill
-        const fillWidth = (barWidth - 4) * state.dayProgress;
-        this.drawRect(barX + 2, barY + 2, fillWidth, barHeight - 4, this.PALETTE.ORANGE);
-
-        // Label
-        this.drawTextShadow('Day Progress', barX, barY - 15, this.PALETTE.WHITE, this.PALETTE.BLACK, 12);
-    },
-
-    /**
-     * Render game over or victory screen
-     */
     renderGameOver(state) {
-        // Darkened overlay
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillStyle = 'rgba(0,0,0,0.8)';
         this.ctx.fillRect(0, 0, this.WIDTH, this.HEIGHT);
 
-        // Game over box
-        const boxWidth = 450;
-        const boxHeight = 200;
-        const boxX = (this.WIDTH - boxWidth) / 2;
-        const boxY = (this.HEIGHT - boxHeight) / 2;
+        const color = state.victory ? this.PALETTE.GREEN : this.PALETTE.RED;
+        const title = state.victory ? "VICTORY" : "GAME OVER";
 
-        if (state.victory) {
-            // Victory screen
-            this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_GREEN);
-            this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.GREEN, 4);
-
-            this.drawTextShadow('VICTORY!', this.WIDTH / 2, boxY + 30, this.PALETTE.YELLOW, this.PALETTE.BLACK, 36, 'center');
-            this.drawTextShadow('You have completed the pilgrimage!', this.WIDTH / 2, boxY + 80, this.PALETTE.WHITE, this.PALETTE.BLACK, 18, 'center');
-            this.drawTextShadow(`Journey completed in ${state.day} days`, this.WIDTH / 2, boxY + 110, this.PALETTE.PEACH, this.PALETTE.BLACK, 16, 'center');
-            this.drawTextShadow('Press [R] to restart', this.WIDTH / 2, boxY + 155, this.PALETTE.YELLOW, this.PALETTE.BLACK, 16, 'center');
-        } else {
-            // Game over screen
-            this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_PURPLE);
-            this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.RED, 4);
-
-            this.drawTextShadow('GAME OVER', this.WIDTH / 2, boxY + 30, this.PALETTE.RED, this.PALETTE.BLACK, 32, 'center');
-            this.drawTextShadow(state.gameOverReason || 'Your journey has ended.', this.WIDTH / 2, boxY + 80, this.PALETTE.WHITE, this.PALETTE.BLACK, 14, 'center');
-            this.drawTextShadow(`You survived ${state.day} days and traveled ${state.miles} miles`, this.WIDTH / 2, boxY + 110, this.PALETTE.PEACH, this.PALETTE.BLACK, 14, 'center');
-            this.drawTextShadow('Press [R] to restart', this.WIDTH / 2, boxY + 155, this.PALETTE.YELLOW, this.PALETTE.BLACK, 16, 'center');
-        }
-    },
-
-    /**
-     * Render notification message
-     */
-    renderNotification(message) {
-        const boxWidth = 300;
-        const boxHeight = 40;
-        const boxX = (this.WIDTH - boxWidth) / 2;
-        const boxY = this.HEIGHT - 80;
-
-        this.drawRect(boxX, boxY, boxWidth, boxHeight, this.PALETTE.DARK_GREEN);
-        this.drawRectOutline(boxX, boxY, boxWidth, boxHeight, this.PALETTE.GREEN, 2);
-        this.drawTextShadow(message, this.WIDTH / 2, boxY + 10, this.PALETTE.WHITE, this.PALETTE.BLACK, 16, 'center');
-    },
-
-    /**
-     * Render controls help
-     */
-    renderControls(state) {
-        const y = this.HEIGHT - 25;
-        let controlsText;
-
-        if (state.exited) {
-            controlsText = 'Game Exited - Refresh to restart';
-        } else if (state.gameOver) {
-            controlsText = '[S] Save  [L] Load  [R] Restart';
-        } else if (state.traveling) {
-            controlsText = '[SPACE] Stop  [S] Save  [L] Load  [Q] Quit';
-        } else {
-            controlsText = '[SPACE] Travel  [H] Hunt  [S] Save  [L] Load  [Q] Quit';
-        }
-
-        this.drawTextShadow(controlsText, this.WIDTH / 2, y, this.PALETTE.INDIGO, this.PALETTE.BLACK, 12, 'center');
-    },
-
-    /**
-     * Render exited screen
-     */
-    renderExited() {
-        // Darkened overlay
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-        this.ctx.fillRect(0, 0, this.WIDTH, this.HEIGHT);
-
-        this.drawTextShadow('Game Exited', this.WIDTH / 2, this.HEIGHT / 2 - 20, this.PALETTE.LIGHT_GRAY, this.PALETTE.BLACK, 32, 'center');
-        this.drawTextShadow('Save data cleared. Refresh to start new game.', this.WIDTH / 2, this.HEIGHT / 2 + 20, this.PALETTE.INDIGO, this.PALETTE.BLACK, 16, 'center');
+        this.drawTextShadow(title, this.WIDTH / 2, 150, color, this.PALETTE.BLACK, 40, 'center');
+        this.drawTextShadow(state.gameOverReason, this.WIDTH / 2, 220, this.PALETTE.WHITE, this.PALETTE.BLACK, 16, 'center');
+        this.drawTextShadow("Press [R] to Restart", this.WIDTH / 2, 300, this.PALETTE.YELLOW, this.PALETTE.BLACK, 20, 'center');
     }
 };
+
+window.Renderer = Renderer;
