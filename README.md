@@ -1,4 +1,16 @@
-# Pilgrim Trail
+<p align="center">
+  <img src="https://raw.githubusercontent.com/OCNGill/Gillsystems-AMD-Radeon-llama-cpp-Update-AI-Stack/main/Gillsystems_logo_stuff/Gill%20Systems%20Logo.png" alt="Gill Systems Logo" width="800">
+</p>
+
+# **Pilgrim Trail**
+
+> *Four pilgrims, 79 miles to Plymouth — hunt, ration, and survive the trail in 8-bit.*
+
+[![Version](https://img.shields.io/badge/Version-0.1.0-brightgreen)](#overview)
+[![Genre](https://img.shields.io/badge/Genre-8-bit%20survival-9cf)](#game-mechanics)
+[![Platform](https://img.shields.io/badge/Platform-HTML5%20Canvas-blue?logo=html5&logoColor=white)](#quick-start)
+[![Logic](https://img.shields.io/badge/Logic-vanilla%20JS-f7df1e?logo=javascript&logoColor=black)](#architecture-notes)
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-009cde?logo=paypal&logoColor=white)](https://paypal.me/gillsystems)
 
 **Version:** 0.1.0 
 **Genre:** 8-bit Style Resource Management Survival Game  
@@ -6,11 +18,29 @@
 
 ---
 
-## Overview
+## **Table of Contents**
+
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+- [File Structure](#file-structure)
+- [Game Mechanics](#game-mechanics)
+- [Control Scheme](#control-scheme)
+- [Architecture Notes](#architecture-notes)
+- [How to Extend](#how-to-extend)
+- [Save System](#save-system)
+- [Technical Specifications](#technical-specifications)
+- [Browser Compatibility](#browser-compatibility)
+- [License](#license)
+- [Development Notes](#development-notes)
+- [Support / Donate](#support--donate)
+
+---
+
+## **Overview**
 
 Pilgrim Trail is a retro-styled survival game in the spirit of Oregon Trail, where you guide a party of pilgrims across 79 miles of treacherous wilderness on their journey to Plymouth. Manage your resources carefully, hunt for food, and decide when to travel or rest to ensure your party survives the journey.
 
-## Quick Start
+## **Quick Start**
 
 1. Open `index.html` in a modern web browser
 2. Press **SPACE** to start traveling
@@ -19,7 +49,7 @@ Pilgrim Trail is a retro-styled survival game in the spirit of Oregon Trail, whe
 
 ---
 
-## File Structure
+## **File Structure**
 
 ```
 Pilgrim-Trail-Game/
@@ -29,7 +59,7 @@ Pilgrim-Trail-Game/
 └── README.md        # This documentation file
 ```
 
-### File Responsibilities
+### **File Responsibilities**
 
 | File | Purpose |
 |------|---------|
@@ -39,43 +69,43 @@ Pilgrim-Trail-Game/
 
 ---
 
-## Game Mechanics
+## **Game Mechanics**
 
-### Core Systems
+### **Core Systems**
 
-#### Day Cycle
+#### **Day Cycle**
 - Time advances automatically (1 day = 5 seconds real-time)
 - Each day consumes **2 food per survivor**
 - Game ends if food reaches 0 (starvation)
 
-#### Distance System
+#### **Distance System**
 - **Destination:** 79 miles
 - **Travel Speed:** 3 miles per day (when traveling)
 - **Victory Condition:** Reach Mile 79 with at least 1 survivor alive
 
-#### Travel Mode
+#### **Travel Mode**
 - Toggle with **SPACE** key
 - **Traveling:** Advances 3 miles per day, cannot hunt
 - **Stopped:** No distance progress, can hunt for food
 
-#### Hunting
+#### **Hunting**
 - Press **H** to hunt (only when stopped)
 - **Success Rate:** 70%
 - **Food Gained:** 5-15 (uniform random) on success
 - **Cost:** Uses 1 full day (food consumed, day advances)
 - Result displayed for 2 seconds
 
-### Event System
+### **Event System**
 
 Random events occur while traveling, referencing actual **Mayflower passengers** for historical immersion.
 
-#### Event Triggering
+#### **Event Triggering**
 - **Condition:** Only while traveling
 - **Timing:** Checked every 2 days
 - **Probability:** 20% chance per check
 - **Display:** Current event shown for 3 seconds
 
-#### Historical Events
+#### **Historical Events**
 
 | # | Event | Effect |
 |---|-------|--------|
@@ -88,23 +118,23 @@ Random events occur while traveling, referencing actual **Mayflower passengers**
 | 7 | "Elizabeth Hopkins gave birth to Oceanus" | +1 survivor, -2 days |
 | 8 | "Storm damaged supplies" | -5 Food |
 
-#### Ship's Log
+#### **Ship's Log**
 - Displays last 3 events
 - Most recent event shown prominently
 - Older events fade in the log
 
-#### Active Modifiers
+#### **Active Modifiers**
 - **Speed Penalty:** Shows remaining days and reduction
 - **Forced Stop:** "Halted!" status in red
 
-### Resources
+### **Resources**
 
 | Resource | Starting Amount | Consumption |
 |----------|----------------|-------------|
 | Food | 100 | 2 per survivor per day |
 | Survivors | 4 | - |
 
-### Win/Lose Conditions
+### **Win/Lose Conditions**
 
 | Condition | Outcome |
 |-----------|---------|
@@ -114,9 +144,9 @@ Random events occur while traveling, referencing actual **Mayflower passengers**
 
 ---
 
-## Control Scheme
+## **Control Scheme**
 
-### Gameplay Controls
+### **Gameplay Controls**
 
 | Key | Action | Condition |
 |-----|--------|-----------|
@@ -124,7 +154,7 @@ Random events occur while traveling, referencing actual **Mayflower passengers**
 | **H** | Hunt for food | Stopped only |
 | **Q** | Quit game | Not in game over |
 
-### System Controls
+### **System Controls**
 
 | Key | Action | Condition |
 |-----|--------|-----------|
@@ -134,9 +164,9 @@ Random events occur while traveling, referencing actual **Mayflower passengers**
 
 ---
 
-## Architecture Notes
+## **Architecture Notes**
 
-### State Management
+### **State Management**
 
 The game uses a **pure functional state management** approach:
 
@@ -150,7 +180,7 @@ const newState = updateFunction(oldState, parameters);
 - Deep cloning via `JSON.parse(JSON.stringify())` prevents mutation
 - Single source of truth in `GameLoop.state`
 
-### Game State Structure
+### **Game State Structure**
 
 ```javascript
 {
@@ -193,7 +223,7 @@ const newState = updateFunction(oldState, parameters);
 }
 ```
 
-### Game Loop Design
+### **Game Loop Design**
 
 Uses a **fixed timestep** architecture for deterministic updates:
 
@@ -227,7 +257,7 @@ Uses a **fixed timestep** architecture for deterministic updates:
 - Prevents physics/timing glitches
 - Separates logic from rendering
 
-### Renderer Architecture
+### **Renderer Architecture**
 
 The renderer is completely **decoupled from game logic**:
 
@@ -243,9 +273,9 @@ Renderer.render(state, notification);
 
 ---
 
-## How to Extend
+## **How to Extend**
 
-### Adding New Resources
+### **Adding New Resources**
 
 1. **Update State** (`game.js` line ~14):
 ```javascript
@@ -267,7 +297,7 @@ state.resources.newResource -= consumptionRate;
 this.drawTextShadow(`Resource: ${state.resources.newResource}`, x, y, color);
 ```
 
-### Adding New Actions
+### **Adding New Actions**
 
 1. **Create Action Function** (`game.js`):
 ```javascript
@@ -290,7 +320,7 @@ function newAction(state) {
 
 3. **Update Controls Display** (`renderControls` in `renderer.js`)
 
-### Adding New Events
+### **Adding New Events**
 
 1. **Create Event Check Function** (`game.js`):
 ```javascript
@@ -310,7 +340,7 @@ while (newState.dayProgress >= 1) {
 }
 ```
 
-### Adding Visual Effects
+### **Adding Visual Effects**
 
 1. **Add to Renderer Object** (`renderer.js`):
 ```javascript
@@ -330,13 +360,13 @@ render(state, notification) {
 
 ---
 
-## Save System
+## **Save System**
 
 - **Storage:** Browser localStorage
 - **Key:** `pilgrim_trail_save`
 - **Format:** JSON-serialized game state
 
-### Save/Load Functions
+### **Save/Load Functions**
 
 ```javascript
 saveGame(state)   // Returns { success: bool, message: string }
@@ -347,7 +377,7 @@ hasSaveData()     // Returns boolean
 
 ---
 
-## Technical Specifications
+## **Technical Specifications**
 
 | Spec | Value |
 |------|-------|
@@ -360,7 +390,7 @@ hasSaveData()     // Returns boolean
 
 ---
 
-## Browser Compatibility
+## **Browser Compatibility**
 
 - Chrome 60+
 - Firefox 55+
@@ -369,13 +399,13 @@ hasSaveData()     // Returns boolean
 
 ---
 
-## License
+## **License**
 
 Proprietary - GillSystems
 
 ---
 
-## Development Notes
+## **Development Notes**
 
 Built following the **7D Agile SDLC** methodology:
 - **DEFINE** → Requirements captured
@@ -385,3 +415,13 @@ Built following the **7D Agile SDLC** methodology:
 - **DOCUMENT** → This README
 - **DELIVER** → Packaged for distribution
 - **DEPLOY** → Ready for deployment
+
+---
+
+## **Support / Donate**
+
+If you find this project useful, supporting Gillsystems keeps the games coming:
+
+**Donate:**
+
+- [![PayPal](https://img.shields.io/badge/PayPal-Donate-009cde?logo=paypal&logoColor=white)](https://paypal.me/gillsystems) https://paypal.me/gillsystems
